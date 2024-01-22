@@ -22,10 +22,10 @@ from datetime import datetime
 import time
 import paho.mqtt.client as mqtt
 import xml.etree.ElementTree as ElementTree
-import hashlib
 import os
+from password_calc import get_mobile_passwd
 
-urllib3.disable_warnings()  # disable warnings of self signed certificate https
+urllib3.disable_warnings()  # disable warnings of self-signed certificate https
 client = mqtt.Client()
 pp = pprint.PrettyPrinter()
 
@@ -54,11 +54,8 @@ MQTT_TOPIC_FREEDS = "Inverter/GridWatts"
 # Token generator
 LOGIN_URL = 'https://enlighten.enphaseenergy.com/login/login.json'
 USERNAME = b'installer'
-DEFAULT_REALM = b'enphaseenergy.com'
 TOKEN_FILE = 'data/token.txt'
 TOKEN_URL = 'https://entrez.enphaseenergy.com/tokens'
-g_serial_number = None
-#  End Settings - no changes after this line
 
 
 # json validator
@@ -117,7 +114,7 @@ else:
 
 # Token generator
 def token_gen(token):
-    if token is None or token == '':
+    if not token:
         print(dt_string, 'Generating new token')
         data = {'user[email]': ENVOY_USER, 'user[password]': ENVOY_USER_PASS}
         if DEBUG:
@@ -137,8 +134,8 @@ def token_gen(token):
                       response, 'using this info', data)
             else:
                 print(dt_string, 'Token generated', response.text)
-                with open(TOKEN_FILE, 'w') as f:
-                    f.write(response.text)
+                with open(TOKEN_FILE, 'w') as file:
+                    file.write(response.text)
                 return response.text
     else:
         return token
@@ -175,7 +172,7 @@ if envoy_version != 5:
     # 5: Refused – not authorised (MQTT v3.1 broker only
 
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(cli, userdata, flags, rc):
     """
     Handle connections (or failures) to the broker.
     This is called after the client has received a CONNACK message
@@ -191,7 +188,7 @@ def on_connect(client, userdata, flags, rc):
     if rc == 0:
         print(dt_string, "Connected to %s:%s" % (MQTT_HOST, MQTT_PORT))
         # Subscribe to our incoming topic
-        client.subscribe(MQTT_TOPIC)
+        cli.subscribe(MQTT_TOPIC)
         print(dt_string, 'Subscribed to MQTT_TOPIC:', "{0}".format(MQTT_TOPIC))
     elif rc == 1:
         print(dt_string, " Connection refused - unacceptable protocol version")
@@ -207,13 +204,13 @@ def on_connect(client, userdata, flags, rc):
         print(dt_string, " Connection failed - result code %d" % rc)
 
 
-def on_publish(client, userdata, mid):
+def on_publish(cli, userdata, mid):
     print("mid: {0}".format(str(mid)))
 
 
-def on_disconnect(client, userdata, rc):
+def on_disconnect(cli, userdata, rc):
     print("Disconnect returned:")
-    print("client: {0}".format(str(client)))
+    print("client: {0}".format(str(cli)))
     print("userdata: {0}".format(str(userdata)))
     print("result: {0}".format(str(rc)))
 
@@ -230,60 +227,6 @@ wait: client.connect(MQTT_HOST, int(MQTT_PORT), 30)
 if DEBUG:
     print(dt_string, 'Finished waiting for mqtt connect')
 wait: client.loop_start()
-
-
-# Generation of Envoy password based on serial number, copy from https://github.com/sarnau/EnphaseEnergy/passwordCalc.py
-# Credits to Markus Fritze https://github.com/sarnau/EnphaseEnergy
-def emupw_get_passwd_for_sn(serial_number, username, realm):
-    if serial_number is None or username is None:
-        return None
-    if realm is None:
-        realm = DEFAULT_REALM
-    return hashlib.md5(b'[e]' + username + b'@' + realm + b'#' + serial_number + b' EnPhAsE eNeRgY ').hexdigest()
-
-
-def emupw_get_passwd(username, realm):
-    global g_serial_number
-    if g_serial_number:
-        return emupw_get_passwd_for_sn(g_serial_number, username, realm)
-    return None
-
-
-def emupw_get_public_passwd(serial_number, username, realm, expiry_timestamp=0):
-    if expiry_timestamp == 0:
-        expiry_timestamp = int(time.time())
-    return hashlib.md5(username + b'@' + realm + b'#' + serial_number + b'%d' % expiry_timestamp).hexdigest()
-
-
-def emupw_get_mobile_passwd(serial_number, username, realm=None):
-    global g_serial_number
-    g_serial_number = serial_number
-    digest = emupw_get_passwd_for_sn(serial_number, username, realm)
-    count_zero = digest.count('0')
-    count_one = digest.count('1')
-    password = ''
-    for cc in digest[::-1][:8]:
-        if count_zero == 3 or count_zero == 6 or count_zero == 9:
-            count_zero = count_zero - 1
-        if count_zero > 20:
-            count_zero = 20
-        if count_zero < 0:
-            count_zero = 0
-        if count_one == 9 or count_one == 15:
-            count_one = count_one - 1
-        if count_one > 26:
-            count_one = 26
-        if count_one < 0:
-            count_one = 0
-        if cc == '0':
-            password += chr(ord('f') + count_zero)
-            count_zero = count_zero - 1
-        elif cc == '1':
-            password += chr(ord('@') + count_one)
-            count_one = count_one - 1
-        else:
-            password += cc
-    return password
 
 
 def scrape_stream_production():
@@ -309,8 +252,8 @@ def scrape_stream_production():
                     time.sleep(1)
                 else:
                     print(dt_string, 'Invalid Json Response:', stream.content)
-        except requests.exceptions.RequestException as e:
-            print(dt_string, 'Exception fetching stream data: %s' % e)
+        except requests.exceptions.RequestException as ex:
+            print(dt_string, 'Exception fetching stream data: %s' % ex)
 
 
 def scrape_stream_livedata():
@@ -350,8 +293,8 @@ def scrape_stream_livedata():
             elif not is_json_valid(stream.content):
                 print(dt_string, 'Invalid Json Response:', stream.content)
 
-        except requests.exceptions.RequestException as e:
-            print(dt_string, 'Exception fetching stream data: %s' % e)
+        except requests.exceptions.RequestException as ex:
+            print(dt_string, 'Exception fetching stream data: %s' % ex)
 
 
 def scrape_stream_meters():
@@ -395,13 +338,13 @@ def scrape_stream_meters():
                     time.sleep(0.6)
                 else:
                     print(dt_string, 'Invalid Json Response:', stream.content)
-        except requests.exceptions.RequestException as e:
-            print(dt_string, 'Exception fetching stream data: %s' % e)
+        except requests.exceptions.RequestException as ex:
+            print(dt_string, 'Exception fetching stream data: %s' % ex)
 
 
 def scrape_stream():
     serial = serial_number.encode("utf-8")
-    envoy_password = emupw_get_mobile_passwd(serial, USERNAME)
+    envoy_password = get_mobile_passwd(serial, USERNAME)
     print(dt_string, 'Envoy password is', envoy_password)
     if DEBUG:
         print(dt_string, 'username:', USERNAME.decode())
@@ -422,8 +365,8 @@ def scrape_stream():
                     data = json.loads(line.replace(marker, b''))
                     json_string = json.dumps(data)
                     client.publish(topic=MQTT_TOPIC, payload=json_string, qos=0)
-        except requests.exceptions.RequestException as e:
-            print(dt_string, 'Exception fetching stream data: %s' % e)
+        except requests.exceptions.RequestException as ex:
+            print(dt_string, 'Exception fetching stream data: %s' % ex)
 
 
 def main():
