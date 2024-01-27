@@ -1,0 +1,4 @@
+logging
+urllib3
+requests
+paho-mqtt
