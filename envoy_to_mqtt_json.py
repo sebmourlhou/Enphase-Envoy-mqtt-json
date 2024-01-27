@@ -129,7 +129,7 @@ def token_gen(token):
             response = requests.post(TOKEN_URL, json=data)
             if response.status_code != 200:
                 logger.error('Failed connect to %s to generate token part 2 got %s using this info %s',
-                            TOKEN_URL, response, data)
+                             TOKEN_URL, response, data)
             else:
                 logger.info('Token generated')
                 logger.debug(response.text)
