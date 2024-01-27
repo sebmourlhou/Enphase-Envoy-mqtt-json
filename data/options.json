@@ -1,5 +1,6 @@
 {
   "MQTT_HOST": "192.168.1.99",
+  "MQTT_CLIENT_ID": "enphase-envoy-mqtt-json",
   "MQTT_USER": "",
   "MQTT_PASSWORD": "",
   "MQTT_PORT": "1883",

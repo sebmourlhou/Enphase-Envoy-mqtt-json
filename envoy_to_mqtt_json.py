@@ -36,6 +36,7 @@ MQTT_PORT = option_dict["MQTT_PORT"]
 MQTT_TOPIC_PRODUCTION_POWER = option_dict["MQTT_TOPIC_PRODUCTION_POWER"]
 MQTT_TOPIC_CONSUMPTION_POWER = option_dict["MQTT_TOPIC_CONSUMPTION_POWER"]
 MQTT_TOPIC_GRID_POWER = option_dict["MQTT_TOPIC_GRID_POWER"]
+MQTT_CLIENT_ID = option_dict["MQTT_CLIENT_ID"]
 MQTT_USER = option_dict["MQTT_USER"]
 MQTT_PASSWORD = option_dict["MQTT_PASSWORD"]
 ENVOY_HOST = option_dict["ENVOY_HOST"]  # ** Enter envoy-s IP. Note - use FQDN and not envoy.local if issues connecting
@@ -59,8 +60,6 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 urllib3.disable_warnings()  # disable warnings of self-signed certificate https
-
-client = mqtt.Client()
 
 
 # json validator
@@ -211,7 +210,7 @@ def on_disconnect(cli, userdata, rc):
     logger.debug("result: {0}".format(str(rc)))
 
 
-client = mqtt.Client()
+client = mqtt.Client(MQTT_CLIENT_ID)
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
