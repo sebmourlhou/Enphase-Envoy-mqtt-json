@@ -52,6 +52,8 @@ USERNAME = b'installer'
 TOKEN_FILE = 'data/token.txt'
 TOKEN_URL = 'https://entrez.enphaseenergy.com/tokens'
 
+REQUEST_TIMEOUT = 30
+
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG if DEBUG else logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
@@ -227,7 +229,7 @@ def scrape_stream_production():
     while True:
         try:
             headers = {"Authorization": "Bearer " + envoy_token}
-            stream = requests.get(url, timeout=5, verify=False, headers=headers)
+            stream = requests.get(url, timeout=REQUEST_TIMEOUT, verify=False, headers=headers)
             if stream.status_code == 401:
                 logger.error('Failed to authenticate %s generating new token', stream)
                 envoy_token = token_gen(None)
@@ -257,7 +259,7 @@ def scrape_stream_livedata():
     while True:
         try:
             headers = {"Authorization": "Bearer " + envoy_token}
-            stream = requests.get(url, timeout=5, verify=False, headers=headers)
+            stream = requests.get(url, timeout=REQUEST_TIMEOUT, verify=False, headers=headers)
             if stream.status_code == 401:
                 logger.error('Failed to authenticate %s generating new token', stream)
                 envoy_token = token_gen(None)
@@ -270,7 +272,7 @@ def scrape_stream_livedata():
                     response_activate = requests.post(url_activate, verify=False, headers=headers, json=activate_json)
                     if is_json_valid(response_activate.content):
                         if response_activate.json()['sc_stream'] == 'enabled':
-                            stream = requests.get(url, stream=True, timeout=5, verify=False, headers=headers)
+                            requests.get(url, stream=True, timeout=REQUEST_TIMEOUT, verify=False, headers=headers)
                             logger.info('Success, stream is active now')
                         else:
                             logger.error('Failed to activate stream %s', response_activate.content)
@@ -296,14 +298,14 @@ def scrape_stream_meters():
         try:
             headers = {"Authorization": "Bearer " + envoy_token}
             logger.debug('headers: %s', headers)
-            stream = requests.get(url, timeout=5, verify=False, headers=headers)
+            stream = requests.get(url, timeout=REQUEST_TIMEOUT, verify=False, headers=headers)
             logger.debug('stream: %s', stream.content)
             if stream.status_code == 401:
                 logger.error('Failed to authenticate %s generating new token', stream)
                 envoy_token = token_gen(None)
                 headers = {"Authorization": "Bearer " + envoy_token}
                 logger.debug('headers after 401: %s', headers)
-                stream = requests.get(url, timeout=5, verify=False, headers=headers)
+                stream = requests.get(url, timeout=REQUEST_TIMEOUT, verify=False, headers=headers)
                 logger.debug('stream after 401: %s', stream.content)
             elif stream.status_code != 200:
                 logger.error('Failed connect to Envoy got %s', stream)
@@ -340,7 +342,7 @@ def scrape_stream():
     logger.debug('Url: %s', url)
     while True:
         try:
-            stream = requests.get(url, verify=False, auth=auth, stream=True, timeout=5)
+            stream = requests.get(url, verify=False, auth=auth, stream=True, timeout=REQUEST_TIMEOUT)
             for line in stream.iter_lines():
                 if line.startswith(marker):
                     logger.debug('Line marker: %s', line)
