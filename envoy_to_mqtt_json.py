@@ -315,13 +315,13 @@ def scrape_stream_meters():
                     data = stream.json()
                     logger.debug('Response: %s', data)
                     production_power = round(data[0]["activePower"])
-                    consumption_power = round(data[1]["activePower"])
+                    consumption_power = round(data[0]["activePower"] + data[1]["activePower"])
                     grid_power = round(data[1]["activePower"]) * -1
                     logger.debug('production power: %d', production_power)
-                    # logger.debug('consumption power: %d', consumption_power)
+                    logger.debug('consumption power: %d', consumption_power)
                     logger.debug('grid power: %d', grid_power)
                     client.publish(topic=MQTT_TOPIC_PRODUCTION_POWER, payload=production_power, qos=0)
-                    # client.publish(topic=MQTT_TOPIC_CONSUMPTION_POWER, payload=consumption_power, qos=0)
+                    client.publish(topic=MQTT_TOPIC_CONSUMPTION_POWER, payload=consumption_power, qos=0)
                     client.publish(topic=MQTT_TOPIC_GRID_POWER, payload=grid_power, qos=0)
                     time.sleep(SLEEP_TIME)
                 else:
