@@ -212,7 +212,7 @@ def on_disconnect(cli, userdata, rc):
     logger.debug("result: {0}".format(str(rc)))
 
 
-client = mqtt.Client(MQTT_CLIENT_ID)
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, MQTT_CLIENT_ID)
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
 client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
