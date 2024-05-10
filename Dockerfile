@@ -1,5 +1,8 @@
 FROM alpine:3.18
 
+# Need it to have a correct time zone
+RUN apk add --no-cache tzdata
+
 # Install requirements for add-on
 RUN apk add --no-cache python3 py3-requests py3-pip
 COPY requirements.txt /
