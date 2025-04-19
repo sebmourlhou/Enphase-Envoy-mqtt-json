@@ -11,5 +11,7 @@
   "MQTT_TOPIC_CONSUMPTION_POWER": "envoy/consumption_power",
   "MQTT_TOPIC_GRID_POWER": "envoy/grid_power",
   "SLEEP_TIME": 5,
+  "SLEEP_TIME_BY_NIGHT": 600,
+  "DAY_NIGHT_POWER_LIMIT": 20,
   "DEBUG": false
 }

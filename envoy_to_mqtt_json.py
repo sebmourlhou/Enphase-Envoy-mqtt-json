@@ -43,6 +43,8 @@ ENVOY_HOST = option_dict["ENVOY_HOST"]  # ** Enter envoy-s IP. Note - use FQDN a
 ENVOY_USER = option_dict["ENVOY_USER"]
 ENVOY_PASSWORD = option_dict["ENVOY_PASSWORD"]
 SLEEP_TIME = option_dict["SLEEP_TIME"]
+SLEEP_TIME_BY_NIGHT = option_dict["SLEEP_TIME_BY_NIGHT"]
+DAY_NIGHT_POWER_LIMIT = option_dict["DAY_NIGHT_POWER_LIMIT"]
 DEBUG = option_dict["DEBUG"]
 #  End Settings - no changes after this line
 
@@ -226,6 +228,7 @@ def scrape_stream_production():
     global envoy_token
     envoy_token = token_gen(envoy_token)
     url = 'https://%s/production.json' % ENVOY_HOST
+    last_production_power = 0
     while True:
         try:
             headers = {"Authorization": "Bearer " + envoy_token}
@@ -244,11 +247,15 @@ def scrape_stream_production():
                     client.publish(topic=MQTT_TOPIC_PRODUCTION_POWER, payload=production_power, qos=0)
                     client.publish(topic=MQTT_TOPIC_CONSUMPTION_POWER, payload=consumption_power, qos=0)
                     client.publish(topic=MQTT_TOPIC_GRID_POWER, payload=grid_power, qos=0)
-                    time.sleep(SLEEP_TIME)
+                    last_production_power = production_power
                 else:
                     logger.error('Invalid Json Response: %s', stream.content)
         except requests.exceptions.RequestException as ex:
             logger.info('Exception fetching stream data: %s', ex)
+        if last_production_power <= DAY_NIGHT_POWER_LIMIT:
+            time.sleep(SLEEP_TIME_BY_NIGHT)
+        else:
+            time.sleep(SLEEP_TIME)
 
 
 def scrape_stream_livedata():
@@ -281,19 +288,20 @@ def scrape_stream_livedata():
                 else:
                     consumption_power = json.dumps(round(stream.json()["meters"]["grid"]["agg_p_mw"]*0.001))
                     client.publish(topic=MQTT_TOPIC_CONSUMPTION_POWER, payload=consumption_power, qos=0)
-                    time.sleep(SLEEP_TIME)
             elif not is_json_valid(stream.content):
                 logger.info('Invalid Json Response: %s', stream.content)
 
         except requests.exceptions.RequestException as ex:
             logger.info('Exception fetching stream data: %s', ex)
 
+        time.sleep(SLEEP_TIME)
 
 def scrape_stream_meters():
     global envoy_token
     envoy_token = token_gen(envoy_token)
     url = 'https://%s/ivp/meters/readings' % ENVOY_HOST
     logger.debug('Url: %s', url)
+    last_production_power = 0
     while True:
         try:
             headers = {"Authorization": "Bearer " + envoy_token}
@@ -316,18 +324,23 @@ def scrape_stream_meters():
                     logger.debug('Response: %s', data)
                     production_power = round(data[0]["activePower"])
                     consumption_power = round(data[0]["activePower"] + data[1]["activePower"])
-                    grid_power = round(data[1]["activePower"]) * -1
+                    grid_power = round(data[1]["activePower"])
                     logger.debug('production power: %d', production_power)
                     logger.debug('consumption power: %d', consumption_power)
                     logger.debug('grid power: %d', grid_power)
                     client.publish(topic=MQTT_TOPIC_PRODUCTION_POWER, payload=production_power, qos=0)
                     client.publish(topic=MQTT_TOPIC_CONSUMPTION_POWER, payload=consumption_power, qos=0)
                     client.publish(topic=MQTT_TOPIC_GRID_POWER, payload=grid_power, qos=0)
-                    time.sleep(SLEEP_TIME)
+                    last_production_power = production_power
                 else:
                     logger.error('Invalid Json Response: %s', stream.content)
         except requests.exceptions.RequestException as ex:
             logger.error('Exception fetching stream data: %s', ex)
+        if last_production_power <= DAY_NIGHT_POWER_LIMIT:
+            time.sleep(SLEEP_TIME_BY_NIGHT)
+        else:
+            time.sleep(SLEEP_TIME)
+        
 
 
 def scrape_stream():
@@ -373,3 +386,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
